@@ -44,9 +44,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: manus-free-debug-apk
-          path: |
-            app/build/outputs/apk/debug/*.apk
-            app/build/outputs/**/*.apk
+          path: app/build/outputs/**/*.apk
           if-no-files-found: error
 
       - name: Create GitHub Release (latest)
@@ -56,9 +54,7 @@ jobs:
           name: "Manus AI APK (Latest)"
           draft: false
           prerelease: false
-          files: |
-            app/build/outputs/apk/debug/*.apk
-            app/build/outputs/**/*.apk
+          files: app/build/outputs/**/*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
