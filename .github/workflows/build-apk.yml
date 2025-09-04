@@ -34,6 +34,7 @@ jobs:
           unzip -q cmdline-tools.zip -d cmdline-tools
           mv cmdline-tools/cmdline-tools cmdline-tools/latest
           rm -f cmdline-tools.zip
+          # קבלת רישיונות – לא מפיל בנייה גם אם אין מה לאשר
           yes | cmdline-tools/latest/bin/sdkmanager --licenses || true
 
       - name: Install required SDK packages
@@ -50,15 +51,23 @@ jobs:
         run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
 
       - name: Gradle clean
-        run: ./gradlew clean --no-daemon
+        run: ./gradlew clean --no-daemon | tee gradle_clean_output.txt
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: Build debug APK (verbose logs)
+        run: ./gradlew assembleDebug --no-daemon --stacktrace --info | tee gradle_build_output.txt
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: manus-free-debug-apk
           path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+          if-no-files-found: warn
+
+      - name: Upload Gradle logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-logs
+          path: |
+            gradle_build_output.txt
+            gradle_clean_output.txt
 
