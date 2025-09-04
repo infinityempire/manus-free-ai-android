@@ -24,7 +24,7 @@
             android:layout_marginEnd="8dp">
 
             <TextView
-                android:id="@+id/messageTextView"
+                android:id="@+id/userMessageTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="הודעת המשתמש"
@@ -33,7 +33,7 @@
                 android:lineSpacingExtra="2dp" />
 
             <TextView
-                android:id="@+id/timeTextView"
+                android:id="@+id/userTimeTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="12:34"
@@ -71,7 +71,7 @@
             android:layout_marginEnd="64dp">
 
             <TextView
-                android:id="@+id/messageTextView"
+                android:id="@+id/aiMessageTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="תשובת Manus-Free"
@@ -80,7 +80,7 @@
                 android:lineSpacingExtra="2dp" />
 
             <TextView
-                android:id="@+id/timeTextView"
+                android:id="@+id/aiTimeTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="12:34"
