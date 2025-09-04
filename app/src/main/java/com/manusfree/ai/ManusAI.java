@@ -1,181 +1,118 @@
 package com.manusfree.ai;
 
-import android.content.Context;
 import android.util.Log;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import androidx.annotation.Nullable;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import java.io.IOException;
+import okhttp3.*;
 
 public class ManusAI {
-    
+
+    public enum Provider { OPENAI, ANTHROPIC }
     private static final String TAG = "ManusAI";
-    private Context context;
-    private ExecutorService executorService;
-    private WebSearchTool webSearchTool;
-    private FileManager fileManager;
-    private Map<String, String> conversationMemory;
-    private Random random;
-    
-    // מאגר תשובות חכמות
-    private String[] greetings = {
-        "שלום! איך אוכל לעזור לך היום?",
-        "היי! אני כאן בשבילך. מה תרצה לדעת?",
-        "ברוך הבא! איך אוכל לסייע לך?"
-    };
-    
-    private String[] helpResponses = {
-        "אני יכול לעזור לך עם:\n• חיפוש מידע ברשת\n• כתיבה וקריאה של קבצים\n• שיחות חכמות\n• ייעוץ וטיפים",
-        "הכלים שלי כוללים:\n🔍 חיפוש ברשת\n📁 ניהול קבצים\n💬 שיחה אינטליגנטית\n🎯 פתרון בעיות"
-    };
-    
-    public interface ResponseCallback {
-        void onResponse(String response);
-        void onError(String error);
+
+    private final OkHttpClient http = new OkHttpClient();
+    private final Provider provider;
+
+    public interface Callback { void onResult(String text); void onError(String message, @Nullable Throwable t); }
+
+    public ManusAI(Provider provider) { this.provider = provider; }
+
+    public void ask(String userText, Callback cb) {
+        if (userText == null || userText.trim().isEmpty()) { cb.onError("Empty prompt", null); return; }
+        try { if (provider == Provider.ANTHROPIC) callClaude(userText, cb); else callOpenAI(userText, cb); }
+        catch (Exception e) { cb.onError("Client error", e); }
     }
-    
-    public ManusAI(Context context) {
-        this.context = context;
-        this.executorService = Executors.newFixedThreadPool(3);
-        this.conversationMemory = new HashMap<>();
-        this.random = new Random();
-    }
-    
-    public void initialize() {
+
+    public void healthCheck(Callback cb) {
         try {
-            webSearchTool = new WebSearchTool();
-            fileManager = new FileManager(context);
-            Log.d(TAG, "Manus-Free AI initialized successfully");
-        } catch (Exception e) {
-            Log.e(TAG, "Error initializing Manus AI", e);
-            throw new RuntimeException("Failed to initialize AI components", e);
-        }
+            if (provider == Provider.OPENAI) {
+                String key = BuildConfig.OPENAI_API_KEY;
+                if (key == null || key.isEmpty()) { cb.onError("Missing OPENAI_API_KEY", null); return; }
+                Request req = new Request.Builder()
+                        .url("https://api.openai.com/v1/models")
+                        .addHeader("Authorization", "Bearer " + key)
+                        .get().build();
+                http.newCall(req).enqueue(new okhttp3.Callback() {
+                    @Override public void onFailure(Call call, IOException e) { cb.onError("Network error", e); }
+                    @Override public void onResponse(Call call, Response resp) throws IOException {
+                        if (!resp.isSuccessful()) { cb.onError("HTTP " + resp.code(), null); return; }
+                        cb.onResult("OK");
+                    }
+                });
+            } else {
+                String key = BuildConfig.ANTHROPIC_API_KEY;
+                if (key == null || key.isEmpty()) { cb.onError("Missing ANTHROPIC_API_KEY", null); return; }
+                cb.onResult("OK"); // או ping לשרת משלך
+            }
+        } catch (Exception e) { cb.onError("Client error", e); }
     }
-    
-    public void processMessage(String message, ResponseCallback callback) {
-        executorService.execute(new Runnable() {
-            @Override
-            public void run() {
+
+    private void callOpenAI(String userText, Callback cb) throws Exception {
+        String key = BuildConfig.OPENAI_API_KEY;
+        if (key == null || key.isEmpty()) { cb.onError("Missing OPENAI_API_KEY", null); return; }
+
+        JSONObject body = new JSONObject();
+        body.put("model", "gpt-4o-mini"); // עדכן למודל שבחשבון שלך
+        JSONArray messages = new JSONArray()
+                .put(new JSONObject().put("role","system").put("content","You are Manus. Answer in Hebrew if user speaks Hebrew. Be grounded."))
+                .put(new JSONObject().put("role","user").put("content", userText));
+        body.put("messages", messages);
+        body.put("temperature", 0.3);
+
+        Request req = new Request.Builder()
+                .url("https://api.openai.com/v1/chat/completions")
+                .addHeader("Authorization", "Bearer " + key)
+                .addHeader("Content-Type", "application/json")
+                .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
+                .build();
+
+        http.newCall(req).enqueue(new okhttp3.Callback() {
+            @Override public void onFailure(Call call, IOException e) { cb.onError("Network error", e); }
+            @Override public void onResponse(Call call, Response resp) throws IOException {
+                if (!resp.isSuccessful()) { cb.onError("HTTP " + resp.code(), null); return; }
+                String json = resp.body().string();
                 try {
-                    String response = generateResponse(message);
-                    callback.onResponse(response);
-                } catch (Exception e) {
-                    Log.e(TAG, "Error processing message", e);
-                    callback.onError("שגיאה בעיבוד ההודעה: " + e.getMessage());
-                }
+                    JSONObject j = new JSONObject(json);
+                    String answer = j.getJSONArray("choices").getJSONObject(0).getJSONObject("message").optString("content", "");
+                    if (answer.isEmpty()) answer = "(אין תשובה מהמודל)";
+                    cb.onResult(answer);
+                } catch (Exception e) { cb.onError("Parse error", e); }
             }
         });
     }
-    
-    private String generateResponse(String message) {
-        String lowerMessage = message.toLowerCase().trim();
-        
-        // זיהוי פקודות כלים
-        if (lowerMessage.startsWith("tool:")) {
-            return processToolCommand(message);
-        }
-        
-        // תשובות לשאלות נפוצות
-        if (containsAny(lowerMessage, "שלום", "היי", "הי", "hello")) {
-            return greetings[random.nextInt(greetings.length)];
-        }
-        
-        if (containsAny(lowerMessage, "עזרה", "help", "מה אתה יכול", "איך אתה עובד")) {
-            return helpResponses[random.nextInt(helpResponses.length)];
-        }
-        
-        if (containsAny(lowerMessage, "מה שלומך", "איך אתה", "מה נשמע")) {
-            return "אני בסדר גמור! תודה ששאלת. איך אני יכול לעזור לך?";
-        }
-        
-        if (containsAny(lowerMessage, "תודה", "thanks", "תנקיו")) {
-            return "בכיף! אני כאן בשבילך תמיד 😊";
-        }
-        
-        // שאלות על זמן
-        if (containsAny(lowerMessage, "מה השעה", "איזה זמן", "what time")) {
-            return "אני לא יכול לראות את השעה הנוכחית, אבל אתה יכול לבדוק בשעון של המכשיר שלך.";
-        }
-        
-        // שאלות על מזג אויר
-        if (containsAny(lowerMessage, "מזג אויר", "weather", "גשם", "שמש")) {
-            return "לבדיקת מזג האוויר, נסה: tool:search_web מזג אויר [שם העיר]";
-        }
-        
-        // שאלות טכנולוגיה
-        if (containsAny(lowerMessage, "טכנולוגיה", "ai", "בינה מלאכותית", "מחשב")) {
-            return "טכנולוגיה זה התחום שלי! מה בדיוק מעניין אותך? אני יכול לחפש מידע עדכני ברשת.";
-        }
-        
-        // שאלות עסקיות
-        if (containsAny(lowerMessage, "עסק", "business", "שיווק", "מכירות")) {
-            return "אני יכול לעזור עם רעיונות עסקיים! רוצה שאחפש מידע עדכני? נסה: tool:search_web [הנושא שמעניין אותך]";
-        }
-        
-        // תשובה כללית חכמה
-        return generateSmartResponse(message);
-    }
-    
-    private String processToolCommand(String command) {
-        try {
-            if (command.startsWith("tool:search_web ")) {
-                String query = command.substring("tool:search_web ".length());
-                return webSearchTool.search(query);
+
+    private void callClaude(String userText, Callback cb) throws Exception {
+        String key = BuildConfig.ANTHROPIC_API_KEY;
+        if (key == null || key.isEmpty()) { cb.onError("Missing ANTHROPIC_API_KEY", null); return; }
+
+        JSONObject body = new JSONObject();
+        body.put("model", "claude-3-haiku-20240307"); // עדכן למודל שלך
+        body.put("max_tokens", 512);
+        body.put("messages", new JSONArray().put(new JSONObject().put("role","user").put("content", userText)));
+
+        Request req = new Request.Builder()
+                .url("https://api.anthropic.com/v1/messages")
+                .addHeader("x-api-key", key)
+                .addHeader("anthropic-version", "2023-06-01")
+                .addHeader("Content-Type", "application/json")
+                .post(RequestBody.create(body.toString(), MediaType.parse("application/json")))
+                .build();
+
+        http.newCall(req).enqueue(new okhttp3.Callback() {
+            @Override public void onFailure(Call call, IOException e) { cb.onError("Network error", e); }
+            @Override public void onResponse(Call call, Response resp) throws IOException {
+                if (!resp.isSuccessful()) { cb.onError("HTTP " + resp.code(), null); return; }
+                String json = resp.body().string();
+                try {
+                    JSONArray content = new JSONObject(json).optJSONArray("content");
+                    String answer = (content != null && content.length() > 0) ? content.getJSONObject(0).optString("text","") : "";
+                    if (answer.isEmpty()) answer = "(אין תשובה מהמודל)";
+                    cb.onResult(answer);
+                } catch (Exception e) { cb.onError("Parse error", e); }
             }
-            
-            if (command.startsWith("tool:write_file ")) {
-                String params = command.substring("tool:write_file ".length());
-                return fileManager.writeFile(params);
-            }
-            
-            if (command.startsWith("tool:read_file ")) {
-                String filename = command.substring("tool:read_file ".length());
-                return fileManager.readFile(filename);
-            }
-            
-            return "כלי לא מוכר. הכלים הזמינים:\n• tool:search_web [שאילתה]\n• tool:write_file [נתיב] [תוכן]\n• tool:read_file [נתיב]";
-            
-        } catch (Exception e) {
-            return "שגיאה בהפעלת הכלי: " + e.getMessage();
-        }
-    }
-    
-    private String generateSmartResponse(String message) {
-        // ניתוח הודעה וייצור תשובה חכמה
-        if (message.contains("?") || message.contains("איך") || message.contains("מה") || message.contains("למה")) {
-            return "זו שאלה מעניינת! אני יכול לחפש מידע עדכני ברשת כדי לתת לך תשובה מדויקת. רוצה שאחפש עבורך?";
-        }
-        
-        if (message.length() > 50) {
-            return "אני רואה שיש לך הרבה מה לומר! אני כאן להקשיב ולעזור. איך אוכל לסייע לך בנושא הזה?";
-        }
-        
-        // תשובות כלליות חכמות
-        String[] smartResponses = {
-            "מעניין! ספר לי עוד על זה.",
-            "אני מבין. איך אוכל לעזור לך עם זה?",
-            "זה נושא חשוב. רוצה שאחפש מידע נוסף?",
-            "יש לי כמה רעיונות. מה הכיוון שמעניין אותך יותר?",
-            "בואו נחשוב על זה יחד. מה המטרה שלך?"
-        };
-        
-        return smartResponses[random.nextInt(smartResponses.length)];
-    }
-    
-    private boolean containsAny(String text, String... keywords) {
-        for (String keyword : keywords) {
-            if (text.contains(keyword.toLowerCase())) {
-                return true;
-            }
-        }
-        return false;
-    }
-    
-    public void cleanup() {
-        if (executorService != null) {
-            executorService.shutdown();
-        }
+        });
     }
 }
 
