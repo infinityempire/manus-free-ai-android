@@ -1,7 +1,6 @@
 package com.manusfree.ai;
 
 import android.content.Context;
-import android.os.AsyncTask;
 import android.util.Log;
 import java.util.HashMap;
 import java.util.Map;
@@ -44,19 +43,27 @@ public class ManusAI {
     }
     
     public void initialize() {
-        webSearchTool = new WebSearchTool();
-        fileManager = new FileManager(context);
-        Log.d(TAG, "Manus-Free AI initialized successfully");
+        try {
+            webSearchTool = new WebSearchTool();
+            fileManager = new FileManager(context);
+            Log.d(TAG, "Manus-Free AI initialized successfully");
+        } catch (Exception e) {
+            Log.e(TAG, "Error initializing Manus AI", e);
+            throw new RuntimeException("Failed to initialize AI components", e);
+        }
     }
     
     public void processMessage(String message, ResponseCallback callback) {
-        executorService.execute(() -> {
-            try {
-                String response = generateResponse(message);
-                callback.onResponse(response);
-            } catch (Exception e) {
-                Log.e(TAG, "Error processing message", e);
-                callback.onError("שגיאה בעיבוד ההודעה: " + e.getMessage());
+        executorService.execute(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    String response = generateResponse(message);
+                    callback.onResponse(response);
+                } catch (Exception e) {
+                    Log.e(TAG, "Error processing message", e);
+                    callback.onError("שגיאה בעיבוד ההודעה: " + e.getMessage());
+                }
             }
         });
     }
