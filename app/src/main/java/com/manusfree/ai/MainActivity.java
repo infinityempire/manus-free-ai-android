@@ -77,12 +77,35 @@ public class MainActivity extends AppCompatActivity {
     
     private void initializeAI() {
         try {
-            manusAI = new ManusAI(this);
-            manusAI.initialize();
+            // יצירת AI אמיתי עם OpenAI
+            manusAI = new ManusAI(ManusAI.Provider.OPENAI);
+            
+            // בדיקת בריאות מיידית
+            manusAI.healthCheck(new ManusAI.Callback() {
+                @Override
+                public void onResult(String ok) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            addMessage("✅ מחובר למנוע AI (Ready)", false);
+                        }
+                    });
+                }
+                
+                @Override
+                public void onError(String msg, Throwable t) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            addMessage("⚠️ " + msg + " — תקן מפתח/אינטרנט לפני שימוש", false);
+                        }
+                    });
+                }
+            });
+            
         } catch (Exception e) {
             Log.e("MainActivity", "Error initializing AI", e);
-            Toast.makeText(this, "שגיאה באתחול המערכת", Toast.LENGTH_LONG).show();
-            // המשך בלי AI - האפליקציה תעבוד במצב מוגבל
+            addMessage("⚠️ שגיאה באתחול AI: " + e.getMessage(), false);
         }
     }
     
@@ -105,11 +128,11 @@ public class MainActivity extends AppCompatActivity {
         // הצגת אינדיקטור טעינה
         addMessage("מעבד...", false);
         
-        // שליחה ל-AI
+        // שליחה ל-AI אמיתי
         try {
-            manusAI.processMessage(message, new ManusAI.ResponseCallback() {
+            manusAI.ask(message, new ManusAI.Callback() {
                 @Override
-                public void onResponse(String response) {
+                public void onResult(String response) {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -119,14 +142,14 @@ public class MainActivity extends AppCompatActivity {
                                 chatAdapter.notifyItemRemoved(chatMessages.size());
                             }
                             
-                            // הוספת תשובת ה-AI
+                            // הוספת תשובת ה-AI האמיתי
                             addMessage(response, false);
                         }
                     });
                 }
                 
                 @Override
-                public void onError(String error) {
+                public void onError(String error, Throwable t) {
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {
@@ -136,7 +159,7 @@ public class MainActivity extends AppCompatActivity {
                                 chatAdapter.notifyItemRemoved(chatMessages.size());
                             }
                             
-                            addMessage("סליחה, אירעה שגיאה: " + error, false);
+                            addMessage("⚠️ " + error, false);
                         }
                     });
                 }
@@ -148,7 +171,7 @@ public class MainActivity extends AppCompatActivity {
                 chatMessages.remove(chatMessages.size() - 1);
                 chatAdapter.notifyItemRemoved(chatMessages.size());
             }
-            addMessage("שגיאה בשליחת ההודעה", false);
+            addMessage("⚠️ שגיאה בשליחת ההודעה: " + e.getMessage(), false);
         }
     }
     
