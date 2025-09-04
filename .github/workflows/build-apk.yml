@@ -23,7 +23,10 @@ jobs:
         
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
-      
+      with:
+        api-level: 34
+        build-tools: 33.0.1
+        
     - name: Cache Gradle packages
       uses: actions/cache@v4
       with:
@@ -38,30 +41,24 @@ jobs:
       run: chmod +x gradlew
       
     - name: Accept Android SDK licenses
-      run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
+      run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || echo "License acceptance completed"
       
     - name: Install required SDK components
       run: |
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34"
-        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.1"
+        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-34" || echo "Platform already installed"
+        $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "build-tools;33.0.1" || echo "Build tools already installed"
+        
+    - name: Clean project
+      run: ./gradlew clean
         
     - name: Build Debug APK
-      run: ./gradlew assembleDebug --stacktrace
-      
-    - name: Build Release APK
-      run: ./gradlew assembleRelease --stacktrace
+      run: ./gradlew assembleDebug --stacktrace --info
       
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
         name: manus-free-debug-apk
         path: app/build/outputs/apk/debug/*.apk
-        
-    - name: Upload Release APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: manus-free-release-apk
-        path: app/build/outputs/apk/release/*.apk
         
     - name: Create Release
       if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
@@ -85,14 +82,8 @@ jobs:
           3. Install the APK
           4. Enjoy your AI assistant!
           
-          🔧 **Technical Details:**
-          - Min SDK: 21 (Android 5.0)
-          - Target SDK: 34 (Android 14)
-          - Built with: Android Gradle Plugin 8.1.0
-          
         files: |
           app/build/outputs/apk/debug/*.apk
-          app/build/outputs/apk/release/*.apk
         draft: false
         prerelease: false
       env:
