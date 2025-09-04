@@ -14,6 +14,7 @@ public class WebSearchTool {
     private static final String TAG = "WebSearchTool";
     private static final String DUCKDUCKGO_API = "https://api.duckduckgo.com/";
     
+    // Note: This method should only be called from background thread (via ExecutorService in ManusAI)
     public String search(String query) {
         try {
             Log.d(TAG, "Searching for: " + query);
