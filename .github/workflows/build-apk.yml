@@ -56,11 +56,21 @@ jobs:
       - name: Build debug APK (verbose logs)
         run: ./gradlew assembleDebug --no-daemon --stacktrace --info | tee gradle_build_output.txt
 
+      - name: Find and list APK files
+        run: |
+          echo "Searching for APK files..."
+          find . -name "*.apk" -type f | tee apk_locations.txt
+          echo "APK files found:"
+          cat apk_locations.txt
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: manus-free-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: |
+            **/*.apk
+            app/build/outputs/apk/**/*.apk
+            build/outputs/apk/**/*.apk
           if-no-files-found: warn
 
       - name: Upload Gradle logs
@@ -70,4 +80,5 @@ jobs:
           path: |
             gradle_build_output.txt
             gradle_clean_output.txt
+            apk_locations.txt
 
