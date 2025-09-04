@@ -49,18 +49,26 @@ jobs:
       - name: Create local.properties
         run: echo "sdk.dir=${ANDROID_SDK_ROOT}" > local.properties
 
+      - name: Clear Gradle Cache
+        run: |
+          rm -rf ~/.gradle/caches
+          ./gradlew --stop
+
+      - name: Touch Java files to force compilation
+        run: find app/src/main/java -type f -exec touch {} +
+
       - name: Gradle clean
-        run: ./gradlew :app:clean --no-daemon --warning-mode=all --stacktrace | tee gradle_clean_output.txt
+        run: ./gradlew clean --no-daemon --warning-mode=all --stacktrace | tee gradle_clean_output.txt
 
       - name: Show task graph (dry run)
         run: ./gradlew :app:assembleDebug --dry-run --warning-mode=all | tee gradle_dryrun.txt
 
-      - name: Build debug APK (verbose)
-        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace --info --warning-mode=all | tee gradle_build_output.txt
+      - name: Force Build debug APK (no cache, rerun tasks)
+        run: ./gradlew :app:assembleDebug --rerun-tasks --no-build-cache --no-daemon --stacktrace --info --warning-mode=all | tee gradle_build_output.txt
 
       - name: Fallback - force package task if needed
         if: ${{ !cancelled() }}
-        run: ./gradlew :app:packageDebug --no-daemon --stacktrace --info --warning-mode=all | tee -a gradle_build_output.txt
+        run: ./gradlew :app:packageDebug --rerun-tasks --no-build-cache --no-daemon --stacktrace --info --warning-mode=all | tee -a gradle_build_output.txt
 
       - name: List build outputs
         run: |
