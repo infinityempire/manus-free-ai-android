@@ -1,9 +1,12 @@
 package com.manusfree.ai;
 
 import android.os.Bundle;
+import android.util.Log;
+import android.view.KeyEvent;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -38,6 +41,13 @@ public class MainActivity extends AppCompatActivity {
         chatRecyclerView = findViewById(R.id.chatRecyclerView);
         messageEditText = findViewById(R.id.messageEditText);
         sendButton = findViewById(R.id.sendButton);
+        
+        // בדיקת null כדי למנוע קריסות
+        if (chatRecyclerView == null || messageEditText == null || sendButton == null) {
+            Toast.makeText(this, "שגיאה בטעינת הממשק", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
     }
     
     private void setupRecyclerView() {
@@ -56,15 +66,24 @@ public class MainActivity extends AppCompatActivity {
         });
         
         // שליחה עם Enter
-        messageEditText.setOnEditorActionListener((v, actionId, event) -> {
-            sendMessage();
-            return true;
+        messageEditText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                sendMessage();
+                return true;
+            }
         });
     }
     
     private void initializeAI() {
-        manusAI = new ManusAI(this);
-        manusAI.initialize();
+        try {
+            manusAI = new ManusAI(this);
+            manusAI.initialize();
+        } catch (Exception e) {
+            Log.e("MainActivity", "Error initializing AI", e);
+            Toast.makeText(this, "שגיאה באתחול המערכת", Toast.LENGTH_LONG).show();
+            // המשך בלי AI - האפליקציה תעבוד במצב מוגבל
+        }
     }
     
     private void sendMessage() {
@@ -77,43 +96,80 @@ public class MainActivity extends AppCompatActivity {
         addMessage(message, true);
         messageEditText.setText("");
         
+        // בדיקה אם AI זמין
+        if (manusAI == null) {
+            addMessage("המערכת לא זמינה כרגע. אנא נסה שוב מאוחר יותר.", false);
+            return;
+        }
+        
         // הצגת אינדיקטור טעינה
         addMessage("מעבד...", false);
         
         // שליחה ל-AI
-        manusAI.processMessage(message, new ManusAI.ResponseCallback() {
-            @Override
-            public void onResponse(String response) {
-                runOnUiThread(() -> {
-                    // הסרת אינדיקטור הטעינה
-                    if (!chatMessages.isEmpty() && chatMessages.get(chatMessages.size() - 1).getMessage().equals("מעבד...")) {
-                        chatMessages.remove(chatMessages.size() - 1);
-                    }
-                    
-                    // הוספת תשובת ה-AI
-                    addMessage(response, false);
-                });
+        try {
+            manusAI.processMessage(message, new ManusAI.ResponseCallback() {
+                @Override
+                public void onResponse(String response) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            // הסרת אינדיקטור הטעינה
+                            if (!chatMessages.isEmpty() && chatMessages.get(chatMessages.size() - 1).getMessage().equals("מעבד...")) {
+                                chatMessages.remove(chatMessages.size() - 1);
+                                chatAdapter.notifyItemRemoved(chatMessages.size());
+                            }
+                            
+                            // הוספת תשובת ה-AI
+                            addMessage(response, false);
+                        }
+                    });
+                }
+                
+                @Override
+                public void onError(String error) {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            // הסרת אינדיקטור הטעינה
+                            if (!chatMessages.isEmpty() && chatMessages.get(chatMessages.size() - 1).getMessage().equals("מעבד...")) {
+                                chatMessages.remove(chatMessages.size() - 1);
+                                chatAdapter.notifyItemRemoved(chatMessages.size());
+                            }
+                            
+                            addMessage("סליחה, אירעה שגיאה: " + error, false);
+                        }
+                    });
+                }
+            });
+        } catch (Exception e) {
+            Log.e("MainActivity", "Error sending message", e);
+            // הסרת אינדיקטור הטעינה
+            if (!chatMessages.isEmpty() && chatMessages.get(chatMessages.size() - 1).getMessage().equals("מעבד...")) {
+                chatMessages.remove(chatMessages.size() - 1);
+                chatAdapter.notifyItemRemoved(chatMessages.size());
             }
-            
-            @Override
-            public void onError(String error) {
-                runOnUiThread(() -> {
-                    // הסרת אינדיקטור הטעינה
-                    if (!chatMessages.isEmpty() && chatMessages.get(chatMessages.size() - 1).getMessage().equals("מעבד...")) {
-                        chatMessages.remove(chatMessages.size() - 1);
-                    }
-                    
-                    addMessage("סליחה, אירעה שגיאה: " + error, false);
-                });
-            }
-        });
+            addMessage("שגיאה בשליחת ההודעה", false);
+        }
     }
     
     private void addMessage(String message, boolean isUser) {
-        ChatMessage chatMessage = new ChatMessage(message, isUser, System.currentTimeMillis());
-        chatMessages.add(chatMessage);
-        chatAdapter.notifyItemInserted(chatMessages.size() - 1);
-        chatRecyclerView.scrollToPosition(chatMessages.size() - 1);
+        try {
+            if (message == null || message.trim().isEmpty()) {
+                return;
+            }
+            
+            if (chatMessages == null || chatAdapter == null || chatRecyclerView == null) {
+                Log.e("MainActivity", "Chat components not initialized");
+                return;
+            }
+            
+            ChatMessage chatMessage = new ChatMessage(message, isUser, System.currentTimeMillis());
+            chatMessages.add(chatMessage);
+            chatAdapter.notifyItemInserted(chatMessages.size() - 1);
+            chatRecyclerView.scrollToPosition(chatMessages.size() - 1);
+        } catch (Exception e) {
+            Log.e("MainActivity", "Error adding message", e);
+        }
     }
     
     @Override
