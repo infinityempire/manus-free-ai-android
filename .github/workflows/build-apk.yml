@@ -19,14 +19,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Ensure JDK 17 (optional)
-        run: |
-          if ! java -version 2>&1 | grep -q 'version "17'; then
-            apt-get update -y
-            apt-get install -y temurin-17-jdk
-          fi
-          java -version
-
       - name: Make gradlew executable
         run: chmod +x gradlew
 
