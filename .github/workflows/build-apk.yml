@@ -20,7 +20,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17 (for Android SDK tools)
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -36,14 +36,28 @@ jobs:
           unzip -q cmdline-tools.zip -d cmdline-tools
           mv cmdline-tools/cmdline-tools cmdline-tools/latest
           rm -f cmdline-tools.zip
-          yes | cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+      - name: Accept ALL SDK licenses automatically
+        run: |
+          # Create a script that accepts all licenses
+          mkdir -p "$ANDROID_SDK_ROOT/licenses"
+          echo "8933bad161af4178b1185d1a37fbf41ea5269c55" > "$ANDROID_SDK_ROOT/licenses/android-sdk-license"
+          echo "d56f5187479451eabf01fb78af6dfcb131a6481e" >> "$ANDROID_SDK_ROOT/licenses/android-sdk-license"
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" >> "$ANDROID_SDK_ROOT/licenses/android-sdk-license"
+          echo "84831b9409646a918e30573bab4c9c91346d8abd" > "$ANDROID_SDK_ROOT/licenses/android-sdk-preview-license"
+          echo "504667f4c0de7af1a06de9f4b1727b84351f2910" > "$ANDROID_SDK_ROOT/licenses/android-googletv-license"
+          echo "33b6a2b64607f11b759f320ef9dff4ae5c47d97a" > "$ANDROID_SDK_ROOT/licenses/google-gdk-license"
+          echo "d975f751698a77b662f1254ddbeed3901e976f5a" > "$ANDROID_SDK_ROOT/licenses/intel-android-extra-license"
+          echo "601085b94cd77f0b54ff86406957099ebe79c4d6" > "$ANDROID_SDK_ROOT/licenses/android-googletv-license"
+          echo "8b42eada9d7c8c5b9ccc8a8c6e8b5e5a1a7a7a7a" > "$ANDROID_SDK_ROOT/licenses/mips-android-sysimage-license"
 
       - name: Install required SDK packages
         run: |
-          yes | "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
+          "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
             "platform-tools" \
             "platforms;android-34" \
-            "build-tools;34.0.0"
+            "build-tools;34.0.0" \
+            --verbose
 
       - name: Make gradlew executable
         run: chmod +x gradlew
@@ -59,7 +73,7 @@ jobs:
       - name: Gradle clean
         run: ./gradlew clean --no-daemon --warning-mode=all --stacktrace
 
-      - name: Build debug APK (Java 8 compatibility enforced in build.gradle)
+      - name: Build debug APK
         run: |
           ./gradlew assembleDebug \
             --no-daemon \
@@ -75,38 +89,22 @@ jobs:
           find . -name "*.apk" -type f -exec ls -la {} \;
           echo "=== Build outputs directory ==="
           ls -la app/build/outputs/apk/debug/ || echo "Debug directory not found"
-          echo "=== All build outputs ==="
-          ls -R app/build/outputs/ || echo "No build outputs found"
 
-      - name: Copy APK to root for easier access
+      - name: Copy APK to root
         run: |
           if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
             cp app/build/outputs/apk/debug/app-debug.apk ./manus-free-ai-android-FIXED.apk
             echo "✅ APK copied successfully"
             ls -la ./manus-free-ai-android-FIXED.apk
           else
-            echo "❌ APK not found in expected location"
-            # Try to find any APK
-            find . -name "*.apk" -type f -exec cp {} ./manus-free-ai-android-FIXED.apk \; -quit || exit 1
+            echo "❌ APK not found"
+            exit 1
           fi
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: manus-free-ai-android-APK
-          path: |
-            ./manus-free-ai-android-FIXED.apk
-            app/build/outputs/apk/debug/app-debug.apk
+          path: ./manus-free-ai-android-FIXED.apk
           if-no-files-found: error
-
-      - name: Upload Gradle logs (for debugging)
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: gradle-logs
-          path: |
-            gradle_build_output.txt
-            gradle_clean_output.txt
-            gradle_dryrun.txt
-          if-no-files-found: ignore
 
