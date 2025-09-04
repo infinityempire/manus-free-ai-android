@@ -21,6 +21,10 @@ android {
         buildConfigField "String", "ANTHROPIC_API_KEY", "\"${anthropicKey}\""
     }
 
+    buildFeatures {
+        buildConfig true
+    }
+
     buildTypes {
         debug {
             // נוח להתקנות מה-Actions
