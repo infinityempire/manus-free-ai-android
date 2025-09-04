@@ -1,5 +1,3 @@
-Downloading https://services.gradle.org/distributions/gradle-8.2-all.zip
-..................10%..................20%...................30%..................40%..................50%...................60%..................70%...................80%..................90%..................100%
 
 Welcome to Gradle 8.2!
 
@@ -15,5 +13,5 @@ Daemon will be stopped at the end of the build
 > Task :clean UP-TO-DATE
 > Task :app:clean UP-TO-DATE
 
-BUILD SUCCESSFUL in 29s
+BUILD SUCCESSFUL in 8s
 2 actionable tasks: 2 up-to-date
