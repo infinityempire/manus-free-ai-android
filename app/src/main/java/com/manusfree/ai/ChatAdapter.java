@@ -41,29 +41,53 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ChatViewHolder
     }
     
     class ChatViewHolder extends RecyclerView.ViewHolder {
-        private TextView messageTextView;
-        private TextView timeTextView;
+        private TextView userMessageTextView;
+        private TextView userTimeTextView;
+        private TextView aiMessageTextView;
+        private TextView aiTimeTextView;
         private View userMessageContainer;
         private View aiMessageContainer;
         
         public ChatViewHolder(@NonNull View itemView) {
             super(itemView);
-            messageTextView = itemView.findViewById(R.id.messageTextView);
-            timeTextView = itemView.findViewById(R.id.timeTextView);
+            userMessageTextView = itemView.findViewById(R.id.userMessageTextView);
+            userTimeTextView = itemView.findViewById(R.id.userTimeTextView);
+            aiMessageTextView = itemView.findViewById(R.id.aiMessageTextView);
+            aiTimeTextView = itemView.findViewById(R.id.aiTimeTextView);
             userMessageContainer = itemView.findViewById(R.id.userMessageContainer);
             aiMessageContainer = itemView.findViewById(R.id.aiMessageContainer);
         }
         
         public void bind(ChatMessage message) {
-            messageTextView.setText(message.getMessage());
-            timeTextView.setText(timeFormat.format(new Date(message.getTimestamp())));
+            if (message == null) {
+                return;
+            }
             
-            if (message.isUser()) {
-                userMessageContainer.setVisibility(View.VISIBLE);
-                aiMessageContainer.setVisibility(View.GONE);
-            } else {
-                userMessageContainer.setVisibility(View.GONE);
-                aiMessageContainer.setVisibility(View.VISIBLE);
+            try {
+                String timeText = timeFormat.format(new Date(message.getTimestamp()));
+                
+                if (message.isUser()) {
+                    userMessageContainer.setVisibility(View.VISIBLE);
+                    aiMessageContainer.setVisibility(View.GONE);
+                    if (userMessageTextView != null) {
+                        userMessageTextView.setText(message.getMessage());
+                    }
+                    if (userTimeTextView != null) {
+                        userTimeTextView.setText(timeText);
+                    }
+                } else {
+                    userMessageContainer.setVisibility(View.GONE);
+                    aiMessageContainer.setVisibility(View.VISIBLE);
+                    if (aiMessageTextView != null) {
+                        aiMessageTextView.setText(message.getMessage());
+                    }
+                    if (aiTimeTextView != null) {
+                        aiTimeTextView.setText(timeText);
+                    }
+                }
+            } catch (Exception e) {
+                // Log error but don't crash
+                android.util.Log.e("ChatAdapter", "Error binding message", e);
             }
         }
     }
