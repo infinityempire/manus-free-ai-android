@@ -10,10 +10,8 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven { url 'https://jitpack.io' }
     }
 }
-
-rootProject.name = "Manus-Free AI"
-include ':app'
+rootProject.name = "manus-free-ai-android"
+include(":app")
 
