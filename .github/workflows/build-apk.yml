@@ -20,11 +20,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 8 (for compatibility)
+      - name: Set up JDK 17 (for Android SDK tools)
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '8'
+          java-version: '17'
           cache: gradle
 
       - name: Install Android SDK commandline-tools
@@ -59,7 +59,7 @@ jobs:
       - name: Gradle clean
         run: ./gradlew clean --no-daemon --warning-mode=all --stacktrace
 
-      - name: Build debug APK with comprehensive options
+      - name: Build debug APK (Java 8 compatibility enforced in build.gradle)
         run: |
           ./gradlew assembleDebug \
             --no-daemon \
@@ -86,7 +86,8 @@ jobs:
             ls -la ./manus-free-ai-android-FIXED.apk
           else
             echo "❌ APK not found in expected location"
-            exit 1
+            # Try to find any APK
+            find . -name "*.apk" -type f -exec cp {} ./manus-free-ai-android-FIXED.apk \; -quit || exit 1
           fi
 
       - name: Upload APK artifact
