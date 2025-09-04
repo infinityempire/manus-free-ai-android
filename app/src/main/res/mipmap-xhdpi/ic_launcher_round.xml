@@ -1,5 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background"/>
-    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
-</adaptive-icon>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#3DDC84"
+        android:pathData="M0,0h108v108h-108z" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M9,0L9,108L99,108L99,0L9,0ZM90,99L18,99L18,9L90,9L90,99Z" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M54,27C45.72,27 39,33.72 39,42C39,50.28 45.72,57 54,57C62.28,57 69,50.28 69,42C69,33.72 62.28,27 54,27ZM54,48C50.69,48 48,45.31 48,42C48,38.69 50.69,36 54,36C57.31,36 60,38.69 60,42C60,45.31 57.31,48 54,48Z" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M54,63C45.72,63 39,69.72 39,78C39,86.28 45.72,93 54,93C62.28,93 69,86.28 69,78C69,69.72 62.28,63 54,63ZM54,84C50.69,84 48,81.31 48,78C48,74.69 50.69,72 54,72C57.31,72 60,74.69 60,78C60,81.31 57.31,84 54,84Z" />
+</vector>
