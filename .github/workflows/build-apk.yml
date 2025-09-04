@@ -8,8 +8,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
-    env:
-      JAVA_TOOL_OPTIONS: -Dfile.encoding=UTF-8
 
     steps:
       - uses: actions/checkout@v4
@@ -18,29 +16,31 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-          cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          api-level: 34
-          build-tools: 34.0.0
-          target: android-34
-
-      - name: Create local.properties
-        run: echo "sdk.dir=$ANDROID_HOME" > local.properties
-
-      - name: Build debug APK (real AI)
+      - name: Setup Android SDK
         run: |
-          ./gradlew :app:clean \
-            -POPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
-            -PANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }} \
-            :app:assembleDebug --no-daemon --stacktrace
+          mkdir -p $HOME/android-sdk
+          cd $HOME/android-sdk
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q commandlinetools-linux-11076708_latest.zip
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools/* cmdline-tools/latest/ 2>/dev/null || true
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Upload APK artifact
+      - name: Build APK
+        run: |
+          export ANDROID_HOME=$HOME/android-sdk
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          ./gradlew assembleDebug \
+            -POPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }} \
+            --no-daemon --stacktrace
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: manus-free-debug-apk
           path: app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
 
