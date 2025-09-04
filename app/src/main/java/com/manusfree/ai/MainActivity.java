@@ -198,9 +198,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (manusAI != null) {
-            manusAI.cleanup();
-        }
+        // ManusAI cleanup handled automatically
     }
 }
 
