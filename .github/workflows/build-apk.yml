@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     container:
-      image: cirrusci/android-sdk:34     # SDK + רישיונות מותקנים מראש
+      image: ghcr.io/cirruslabs/android-sdk:34
       options: --user root
 
     env:
