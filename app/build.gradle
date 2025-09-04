@@ -29,8 +29,8 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
 
     // חשוב: הצהר מפורשות על המקורות
@@ -40,6 +40,12 @@ android {
             res.srcDirs = ['src/main/res']
             manifest.srcFile 'src/main/AndroidManifest.xml'
         }
+    }
+
+    // Force Java compilation with proper encoding
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+        options.compilerArgs += ['-Xlint:deprecation']
     }
 }
 
